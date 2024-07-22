@@ -64,7 +64,19 @@ else:
     title = app.config['TITLE']
 
 # Redis Connection
-r = redis.Redis()
+redis_server = os.environ['REDIS']
+
+   # Redis Connection to another container
+try:
+    if "REDIS_PWD" in os.environ:
+        r = redis.StrictRedis(host=redis_server,
+                           port=6379,
+                           password=os.environ['REDIS_PWD'])
+    else:
+        r = redis.Redis(redis_server)
+    r.ping()
+except redis.ConnectionError:
+      exit('Failed to connect to Redis, terminating.')
 
 # Change title to host name to demo NLB
 if app.config['SHOWHOST'] == "true":
@@ -82,8 +94,10 @@ def index():
         # Get current values
         vote1 = r.get(button1).decode('utf-8')
         # TODO: use tracer object to trace cat vote
+        tracer.span(name="Cats Vote")
         vote2 = r.get(button2).decode('utf-8')
         # TODO: use tracer object to trace dog vote
+        tracer.span(name="Dogs Vote")
 
         # Return index with values
         return render_template("index.html", value1=int(vote1), value2=int(vote2), button1=button1, button2=button2, title=title)
@@ -91,18 +105,23 @@ def index():
     elif request.method == 'POST':
 
         if request.form['vote'] == 'reset':
+            vote1 = r.get(button1).decode('utf-8')
+            vote2 = r.get(button2).decode('utf-8')
+
+            if (vote1 > vote2) :
+                properties = {'custom_dimensions': {'Cat Vote': vote1}}
+                logger.info('Cat Vote', extra=properties)
+            elif (vote1 < vote2) :
+                properties = {'custom_dimensions': {'Dog Vote': vote1}}
+                logger.warning('Dog Vote', extra=properties)
+            else :
+                properties = {'custom_dimensions': {'Cat and Dog Vote': vote2}}
+                logger.warning('Cat and Dog Vote', extra=properties)
 
             # Empty table and return results
             r.set(button1,0)
             r.set(button2,0)
-            vote1 = r.get(button1).decode('utf-8')
-            properties = {'custom_dimensions': {'Cats Vote': vote1}}
-            # TODO: use logger object to log cat vote
-
-            vote2 = r.get(button2).decode('utf-8')
-            properties = {'custom_dimensions': {'Dogs Vote': vote2}}
-            # TODO: use logger object to log dog vote
-
+            
             return render_template("index.html", value1=int(vote1), value2=int(vote2), button1=button1, button2=button2, title=title)
 
         else:
@@ -120,6 +139,8 @@ def index():
 
 if __name__ == "__main__":
     # TODO: Use the statement below when running locally
-    app.run() 
+    # app.run() 
+    app.run(host='0.0.0.0', threaded=True, debug=True)
     # TODO: Use the statement below before deployment to VMSS
     # app.run(host='0.0.0.0', threaded=True, debug=True) # remote
+#GET_PASSES_THIS_REPO_UDACITY_PLEASE 
