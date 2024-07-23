@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Variables
-resourceGroup="acdnd-c4-project"
-location="westus"
+resourceGroup="acdnd-c7-project"
+location="EastUS2"
 osType="Ubuntu2204"
-vmssName="udacity-vmss"
+vmssName="udacity7-vmss"
 adminName="udacityadmin"
 storageAccount="udacitydiag$RANDOM"
 bePoolName="$vmssName-bepool"
